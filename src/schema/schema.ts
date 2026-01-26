@@ -1,4 +1,7 @@
 import { IRepositoryService } from '../types/index.js';
+import { GraphQLError } from 'graphql';
+import { AppError, isOperationalError } from '../errors/index.js';
+import { logger } from '../infrastructure/logger.js';
 
 export const typeDefs = `#graphql
   type Repository {
@@ -44,7 +47,54 @@ interface RepositoryDetailsArgs {
   repoName: string;
 }
 
+function handleError(error: unknown, operation: string): never {
+  logger.error(`GraphQL resolver error: ${operation}`, error as Error, {
+    operation,
+  });
 
+  if (error instanceof AppError) {
+    const extensions: Record<string, unknown> = {
+      code: getErrorCode(error),
+      statusCode: error.statusCode,
+    };
+
+    if (error.context) {
+      extensions.details = error.context;
+    }
+
+    throw new GraphQLError(error.message, {
+      extensions,
+    });
+  }
+
+  if (!isOperationalError(error)) {
+    throw new GraphQLError('An unexpected error occurred', {
+      extensions: {
+        code: 'INTERNAL_SERVER_ERROR',
+        statusCode: 500,
+      },
+    });
+  }
+
+  throw error;
+}
+
+function getErrorCode(error: AppError): string {
+  switch (error.statusCode) {
+    case 400:
+      return 'BAD_REQUEST';
+    case 401:
+      return 'UNAUTHENTICATED';
+    case 403:
+      return 'FORBIDDEN';
+    case 404:
+      return 'NOT_FOUND';
+    case 429:
+      return 'RATE_LIMITED';
+    default:
+      return 'INTERNAL_SERVER_ERROR';
+  }
+}
 
 export const resolvers = {
   Query: {
@@ -54,9 +104,9 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       try {
-       // get repositories
+        return await context.repositoryService.listRepositories(token);
       } catch (error) {
-       //handle error
+        handleError(error, 'repositories');
       }
     },
 

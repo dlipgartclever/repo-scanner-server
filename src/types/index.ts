@@ -89,3 +89,7 @@ export interface IGitHubClient {
   getFileContent(token: string, owner: string, repo: string, path: string): Promise<GitHubContentResponse>;
   listWebhooks(token: string, owner: string, repo: string): Promise<GitHubWebhookResponse[]>;
 }
+
+export interface IRepositoryService {
+  listRepositories(token: string): Promise<Repository[]>;
+}
