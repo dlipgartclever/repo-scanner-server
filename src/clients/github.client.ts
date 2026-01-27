@@ -5,7 +5,7 @@ import {
     GitHubWebhookResponse,
     IGitHubClient,
 } from '../types/index.js';
-import {AuthenticationError, GitHubApiError, NotFoundError,} from '../errors/index.js';
+import {AuthenticationError, GitHubApiError, NotFoundError,} from '../infrastructure/errors/index.js';
 import {logger} from '../infrastructure/logger.js';
 
 const GITHUB_API_BASE_URL = 'https://api.github.com';

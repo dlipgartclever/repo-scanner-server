@@ -1,6 +1,6 @@
 import { IRepositoryService } from '../types/index.js';
 import { GraphQLError } from 'graphql';
-import { AppError, isOperationalError } from '../errors/index.js';
+import { AppError, isOperationalError } from '../infrastructure/errors/index.js';
 import { logger } from '../infrastructure/logger.js';
 
 export const typeDefs = `#graphql

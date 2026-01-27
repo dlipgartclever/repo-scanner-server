@@ -8,7 +8,7 @@ import {
   GitHubTreeItem,
 } from '../types/index.js';
 import { logger } from '../infrastructure/logger.js';
-import { NotFoundError, ValidationError } from '../errors/index.js';
+import { NotFoundError, ValidationError } from '../infrastructure/errors/index.js';
 
 const YAML_EXTENSIONS = ['.yaml', '.yml'];
 const MAX_CONCURRENT_REPO_SCANS = 2;
