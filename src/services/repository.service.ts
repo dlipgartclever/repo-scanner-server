@@ -19,7 +19,6 @@ export class RepositoryService implements IRepositoryService {
     this.validateToken(token);
 
     const correlationId = this.generateCorrelationId();
-    const startTime = Date.now();
 
     logger.info('Fetching user repositories', {
       correlationId,
@@ -39,7 +38,6 @@ export class RepositoryService implements IRepositoryService {
         correlationId,
         operation: 'list_repositories',
         count: repositories.length,
-        duration: Date.now() - startTime,
       });
 
       return repositories;
@@ -47,7 +45,6 @@ export class RepositoryService implements IRepositoryService {
       logger.error('Failed to fetch repositories', error as Error, {
         correlationId,
         operation: 'list_repositories',
-        duration: Date.now() - startTime,
       });
       throw error;
     }
@@ -59,7 +56,6 @@ export class RepositoryService implements IRepositoryService {
     this.validateRepoName(repoName);
 
     const correlationId = this.generateCorrelationId();
-    const startTime = Date.now();
 
     logger.info('Fetching repository details', {
       correlationId,
@@ -74,7 +70,6 @@ export class RepositoryService implements IRepositoryService {
         correlationId,
         operation: 'get_repository_details',
         repository: repoName,
-        duration: Date.now() - startTime,
       });
 
       return repoDetails;
@@ -83,7 +78,6 @@ export class RepositoryService implements IRepositoryService {
         correlationId,
         operation: 'get_repository_details',
         repository: repoName,
-        duration: Date.now() - startTime,
       });
       throw error;
     }
@@ -165,7 +159,7 @@ export class RepositoryService implements IRepositoryService {
     const yamlFile = files.find((file) => YAML_EXTENSIONS.some((ext) => file.path.toLowerCase().endsWith(ext)));
 
     if (!yamlFile) {
-      logger.debug('No YAML file found in repository', {
+      logger.info('No YAML file found in repository', {
         correlationId,
         repository: repoName,
       });
@@ -181,7 +175,7 @@ export class RepositoryService implements IRepositoryService {
 
       const decodedContent = Buffer.from(content.content, 'base64').toString('utf-8');
 
-      logger.debug('Successfully fetched YAML file content', {
+      logger.info('Successfully fetched YAML file content', {
         correlationId,
         repository: repoName,
         filePath: yamlFile.path,
