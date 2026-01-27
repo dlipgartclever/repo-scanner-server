@@ -1,0 +1,26 @@
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import globals from 'globals';
+import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+
+export default tseslint.config(
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  eslintPluginPrettierRecommended,
+  {
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ['src/tests/*.ts'],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    ignores: ['dist/', 'node_modules/', '*.config.js'],
+  },
+);

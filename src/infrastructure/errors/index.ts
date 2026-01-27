@@ -1,5 +1,5 @@
-import {logger} from "../logger.js";
-import {GraphQLError} from "graphql/index.js";
+import { logger } from '../logger.js';
+import { GraphQLError } from 'graphql/index.js';
 
 export const ErrorType = {
   AUTHENTICATION_ERROR: 'AUTHENTICATION_ERROR',
@@ -14,12 +14,7 @@ export class AppError extends Error {
   public readonly isOperational: boolean;
   public readonly context?: Record<string, unknown>;
 
-  constructor(
-    message: string,
-    statusCode: number = 500,
-    isOperational: boolean = true,
-    context?: Record<string, unknown>
-  ) {
+  constructor(message: string, statusCode: number = 500, isOperational: boolean = true, context?: Record<string, unknown>) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = isOperational;
@@ -68,50 +63,50 @@ export function isOperationalError(error: unknown): boolean {
 }
 
 export function handleError(error: unknown, operation: string): never {
-    logger.error(`GraphQL resolver error: ${operation}`, error as Error, {
-        operation,
+  logger.error(`GraphQL resolver error: ${operation}`, error as Error, {
+    operation,
+  });
+
+  if (error instanceof AppError) {
+    const extensions: Record<string, unknown> = {
+      code: getErrorCode(error),
+      statusCode: error.statusCode,
+    };
+
+    if (error.context) {
+      extensions.details = error.context;
+    }
+
+    throw new GraphQLError(error.message, {
+      extensions,
     });
+  }
 
-    if (error instanceof AppError) {
-        const extensions: Record<string, unknown> = {
-            code: getErrorCode(error),
-            statusCode: error.statusCode,
-        };
+  if (!isOperationalError(error)) {
+    throw new GraphQLError('An unexpected error occurred', {
+      extensions: {
+        code: 'INTERNAL_SERVER_ERROR',
+        statusCode: 500,
+      },
+    });
+  }
 
-        if (error.context) {
-            extensions.details = error.context;
-        }
-
-        throw new GraphQLError(error.message, {
-            extensions,
-        });
-    }
-
-    if (!isOperationalError(error)) {
-        throw new GraphQLError('An unexpected error occurred', {
-            extensions: {
-                code: 'INTERNAL_SERVER_ERROR',
-                statusCode: 500,
-            },
-        });
-    }
-
-    throw error;
+  throw error;
 }
 
 function getErrorCode(error: AppError): string {
-    switch (error.statusCode) {
-        case 400:
-            return 'BAD_REQUEST';
-        case 401:
-            return 'UNAUTHENTICATED';
-        case 403:
-            return 'FORBIDDEN';
-        case 404:
-            return 'NOT_FOUND';
-        case 429:
-            return 'RATE_LIMITED';
-        default:
-            return 'INTERNAL_SERVER_ERROR';
-    }
+  switch (error.statusCode) {
+    case 400:
+      return 'BAD_REQUEST';
+    case 401:
+      return 'UNAUTHENTICATED';
+    case 403:
+      return 'FORBIDDEN';
+    case 404:
+      return 'NOT_FOUND';
+    case 429:
+      return 'RATE_LIMITED';
+    default:
+      return 'INTERNAL_SERVER_ERROR';
+  }
 }

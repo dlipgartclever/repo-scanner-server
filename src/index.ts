@@ -20,7 +20,6 @@ async function main(): Promise<void> {
       logger.error('Unhandled rejection', reason as Error);
       process.exit(1);
     });
-
   } catch (error) {
     logger.error('Failed to start server', error as Error);
     process.exit(1);

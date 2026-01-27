@@ -1,5 +1,11 @@
 import { Octokit } from '@octokit/rest';
-import { GitHubContentResponse, GitHubRepositoryResponse, GitHubTreeResponse, GitHubWebhookResponse, IGitHubClient } from '../types/index.js';
+import {
+  GitHubContentResponse,
+  GitHubRepositoryResponse,
+  GitHubTreeResponse,
+  GitHubWebhookResponse,
+  IGitHubClient,
+} from '../types/index.js';
 import { AuthenticationError, GitHubApiError, NotFoundError } from '../infrastructure/errors/index.js';
 
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 30000;

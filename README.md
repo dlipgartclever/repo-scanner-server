@@ -34,6 +34,7 @@ npm start
 ### Queries
 
 #### List Repositories
+
 ```graphql
 query {
   repositories(token: "your-github-token") {
@@ -45,6 +46,7 @@ query {
 ```
 
 #### Repository Details
+
 ```graphql
 query {
   repositoryDetails(token: "your-github-token", repoName: "GreenridgeApp1") {
@@ -67,12 +69,12 @@ query {
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `4000` | Server port |
-| `NODE_ENV` | `development` | Environment |
-| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARN, ERROR) |
-| `SERVICE_NAME` | `github-scanner` | Service name for logs |
+| Variable       | Default          | Description                              |
+| -------------- | ---------------- | ---------------------------------------- |
+| `PORT`         | `4000`           | Server port                              |
+| `NODE_ENV`     | `development`    | Environment                              |
+| `LOG_LEVEL`    | `INFO`           | Logging level (DEBUG, INFO, WARN, ERROR) |
+| `SERVICE_NAME` | `github-scanner` | Service name for logs                    |
 
 ## Testing
 

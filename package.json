@@ -8,7 +8,9 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
   },
   "keywords": [],
   "author": "",
@@ -16,15 +18,23 @@
   "description": "GitHub Repository Scanner with Apollo GraphQL",
   "dependencies": {
     "@apollo/server": "^5.0.0",
+    "@octokit/rest": "^22.0.1",
     "dotenv": "^17.2.3",
     "graphql": "^16.10.0",
     "p-limit": "^6.1.0",
     "winston": "^3.11.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/node": "^20.11.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "5.5.5",
+    "globals": "^17.1.0",
+    "prettier": "^3.4.2",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
+    "typescript-eslint": "^8.54.0",
     "vitest": "^1.2.0"
   }
 }

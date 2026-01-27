@@ -23,26 +23,16 @@ const createWinstonLogger = (serviceName: string, level: string): winston.Logger
   return winston.createLogger({
     level,
     defaultMeta: { service: serviceName },
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      winston.format.errors({ stack: true }),
-      winston.format.json()
-    ),
+    format: winston.format.combine(winston.format.timestamp(), winston.format.errors({ stack: true }), winston.format.json()),
     transports: [
       new winston.transports.Console({
-        format: winston.format.combine(
-          winston.format.timestamp(),
-          winston.format.json()
-        ),
+        format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
       }),
     ],
   });
 };
 
-const winstonLogger = createWinstonLogger(
-  process.env.SERVICE_NAME || 'github-scanner',
-  process.env.LOG_LEVEL?.toLowerCase() || 'info'
-);
+const winstonLogger = createWinstonLogger(process.env.SERVICE_NAME || 'github-scanner', process.env.LOG_LEVEL?.toLowerCase() || 'info');
 
 export class Logger {
   private readonly winstonInstance: winston.Logger;
