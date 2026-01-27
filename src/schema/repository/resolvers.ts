@@ -1,4 +1,4 @@
-import { IRepositoryService } from '../../types/index.js';
+import { IRepositoryService, RepositoryDetailsParent } from '../../types/index.js';
 import { handleError } from '../../infrastructure/errors/index.js';
 import { typeDefs } from './typeDefs.js';
 
@@ -33,6 +33,32 @@ export const resolvers = {
         return await context.repositoryService.getRepositoryDetails(args.token, args.owner, args.repoName);
       } catch (error) {
         handleError(error, 'repositoryDetails');
+      }
+    },
+  },
+
+  RepositoryDetails: {
+    activeWebhooks: async (parent: RepositoryDetailsParent, _args: unknown, context: GraphQLContext) => {
+      try {
+        return await context.repositoryService.getActiveWebhooks(parent.token, parent.owner, parent.repoName);
+      } catch (error) {
+        handleError(error, 'activeWebhooks');
+      }
+    },
+
+    numberOfFiles: async (parent: RepositoryDetailsParent, _args: unknown, context: GraphQLContext) => {
+      try {
+        return await context.repositoryService.getNumberOfFiles(parent.token, parent.owner, parent.repoName, parent.defaultBranch);
+      } catch (error) {
+        handleError(error, 'numberOfFiles');
+      }
+    },
+
+    contentOfOneYamlFile: async (parent: RepositoryDetailsParent, _args: unknown, context: GraphQLContext) => {
+      try {
+        return await context.repositoryService.getYamlFileContent(parent.token, parent.owner, parent.repoName, parent.defaultBranch);
+      } catch (error) {
+        handleError(error, 'contentOfOneYamlFile');
       }
     },
   },

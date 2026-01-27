@@ -1,5 +1,5 @@
 import pLimit, { LimitFunction } from 'p-limit';
-import { Repository, RepositoryDetails, Webhook, IRepositoryService, IGitHubClient, GitHubTreeItem } from '../types/index.js';
+import { Repository, RepositoryDetailsParent, Webhook, IRepositoryService, IGitHubClient, GitHubTree } from '../types/index.js';
 import { logger } from '../infrastructure/logger.js';
 import { ValidationError } from '../infrastructure/errors/index.js';
 
@@ -53,7 +53,7 @@ export class RepositoryService implements IRepositoryService {
     }
   }
 
-  async getRepositoryDetails(token: string, owner: string, repoName: string): Promise<RepositoryDetails> {
+  async getRepositoryDetails(token: string, owner: string, repoName: string): Promise<RepositoryDetailsParent> {
     this.validateToken(token);
     this.validateOwner(owner);
     this.validateRepoName(repoName);
@@ -68,7 +68,7 @@ export class RepositoryService implements IRepositoryService {
     });
 
     try {
-      const repoDetails = await this.limit(() => this.fetchRepositoryDetails(token, owner, repoName, correlationId));
+      const repoDetails = await this.limit(() => this.fetchBasicRepositoryDetails(token, owner, repoName));
 
       logger.info('Successfully fetched repository details', {
         correlationId,
@@ -89,19 +89,18 @@ export class RepositoryService implements IRepositoryService {
     }
   }
 
-  private async fetchRepositoryDetails(token: string, owner: string, repoName: string, correlationId: string): Promise<RepositoryDetails> {
-    const repoInfoResult = await this.githubClient.getRepository(token, owner, repoName);
+  async getActiveWebhooks(token: string, owner: string, repoName: string): Promise<Webhook[]> {
+    const correlationId = this.generateCorrelationId();
 
-    const treeResult = await this.githubClient.getRepositoryTree(token, owner, repoName, repoInfoResult.default_branch);
+    logger.info('Fetching active webhooks', {
+      correlationId,
+      operation: 'get_active_webhooks',
+      repository: repoName,
+    });
 
     const webhooksResult = await this.githubClient.listWebhooks(token, owner, repoName);
 
-    const files = treeResult.tree.filter((item) => item.type === 'blob');
-    const numberOfFiles = files.length;
-
-    const yamlContent = await this.getFirstYamlFileContent(token, owner, repoName, files, correlationId);
-
-    const activeWebhooks: Webhook[] = webhooksResult
+    return webhooksResult
       .filter((hook) => hook.active)
       .map((hook) => ({
         id: hook.id,
@@ -110,15 +109,49 @@ export class RepositoryService implements IRepositoryService {
         url: hook.config.url || '',
         events: hook.events,
       }));
+  }
+
+  async getNumberOfFiles(token: string, owner: string, repoName: string, defaultBranch: string): Promise<number> {
+    const correlationId = this.generateCorrelationId();
+
+    logger.info('Fetching number of files', {
+      correlationId,
+      operation: 'get_number_of_files',
+      repository: repoName,
+    });
+
+    const treeResult = await this.githubClient.getRepositoryTree(token, owner, repoName, defaultBranch);
+    const files = treeResult.tree.filter((item) => item.type === 'blob');
+
+    return files.length;
+  }
+
+  async getYamlFileContent(token: string, owner: string, repoName: string, defaultBranch: string): Promise<string | null> {
+    const correlationId = this.generateCorrelationId();
+
+    logger.info('Fetching YAML file content', {
+      correlationId,
+      operation: 'get_yaml_file_content',
+      repository: repoName,
+    });
+
+    const treeResult = await this.githubClient.getRepositoryTree(token, owner, repoName, defaultBranch);
+    const files = treeResult.tree.filter((item) => item.type === 'blob');
+
+    return this.getFirstYamlFileContent(token, owner, repoName, files, correlationId);
+  }
+
+  private async fetchBasicRepositoryDetails(token: string, owner: string, repoName: string): Promise<RepositoryDetailsParent> {
+    const repoInfoResult = await this.githubClient.getRepository(token, owner, repoName);
 
     return {
+      token,
+      owner: repoInfoResult.owner.login,
+      repoName: repoInfoResult.name,
       name: repoInfoResult.name,
       size: repoInfoResult.size,
-      owner: repoInfoResult.owner.login,
       isPrivate: repoInfoResult.private,
-      numberOfFiles,
-      contentOfOneYamlFile: yamlContent,
-      activeWebhooks,
+      defaultBranch: repoInfoResult.default_branch,
     };
   }
 
@@ -126,7 +159,7 @@ export class RepositoryService implements IRepositoryService {
     token: string,
     owner: string,
     repoName: string,
-    files: GitHubTreeItem[],
+    files: GitHubTree,
     correlationId: string,
   ): Promise<string | null> {
     const yamlFile = files.find((file) => YAML_EXTENSIONS.some((ext) => file.path.toLowerCase().endsWith(ext)));
@@ -141,6 +174,10 @@ export class RepositoryService implements IRepositoryService {
 
     try {
       const content = await this.githubClient.getFileContent(token, owner, repoName, yamlFile.path);
+
+      if (Array.isArray(content) || !('content' in content) || !content.content) {
+        return null;
+      }
 
       const decodedContent = Buffer.from(content.content, 'base64').toString('utf-8');
 

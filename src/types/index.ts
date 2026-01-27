@@ -1,17 +1,19 @@
+import { RestEndpointMethodTypes } from '@octokit/rest';
+
 export interface Repository {
   name: string;
   size: number;
   owner: string;
 }
 
-export interface RepositoryDetails {
+export interface RepositoryDetailsParent {
+  token: string;
+  owner: string;
+  repoName: string;
   name: string;
   size: number;
-  owner: string;
   isPrivate: boolean;
-  numberOfFiles: number;
-  contentOfOneYamlFile: string | null;
-  activeWebhooks: Webhook[];
+  defaultBranch: string;
 }
 
 export interface Webhook {
@@ -22,56 +24,15 @@ export interface Webhook {
   events: string[];
 }
 
-export interface GitHubRepositoryResponse {
-  id: number;
-  name: string;
-  full_name: string;
-  private: boolean;
-  owner: {
-    login: string;
-    id: number;
-  };
-  size: number;
-  default_branch: string;
-}
+export type GitHubRepositoryResponse = RestEndpointMethodTypes['repos']['get']['response']['data'];
 
-export interface GitHubTreeResponse {
-  sha: string;
-  url: string;
-  tree: GitHubTreeItem[];
-  truncated: boolean;
-}
+export type GitHubTreeResponse = RestEndpointMethodTypes['git']['getTree']['response']['data'];
 
-export interface GitHubTreeItem {
-  path: string;
-  mode: string;
-  type: 'blob' | 'tree';
-  sha: string;
-  size?: number;
-  url: string;
-}
+export type GitHubTree = GitHubTreeResponse['tree'];
 
-export interface GitHubContentResponse {
-  name: string;
-  path: string;
-  sha: string;
-  size: number;
-  url: string;
-  type: string;
-  content: string;
-  encoding: string;
-}
+export type GitHubContentResponse = RestEndpointMethodTypes['repos']['getContent']['response']['data'];
 
-export interface GitHubWebhookResponse {
-  id: number;
-  name: string;
-  active: boolean;
-  events: string[];
-  config: {
-    url?: string;
-    content_type?: string;
-  };
-}
+export type GitHubWebhookResponse = RestEndpointMethodTypes['repos']['listWebhooks']['response']['data'][number];
 
 export interface LogContext {
   correlationId?: string;
@@ -92,5 +53,8 @@ export interface IGitHubClient {
 
 export interface IRepositoryService {
   listRepositories(token: string): Promise<Repository[]>;
-  getRepositoryDetails(token: string, owner: string, repoName: string): Promise<RepositoryDetails>;
+  getRepositoryDetails(token: string, owner: string, repoName: string): Promise<RepositoryDetailsParent>;
+  getActiveWebhooks(token: string, owner: string, repoName: string): Promise<Webhook[]>;
+  getNumberOfFiles(token: string, owner: string, repoName: string, defaultBranch: string): Promise<number>;
+  getYamlFileContent(token: string, owner: string, repoName: string, defaultBranch: string): Promise<string | null>;
 }

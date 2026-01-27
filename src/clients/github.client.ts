@@ -79,7 +79,7 @@ export class GitHubClient implements IGitHubClient {
         recursive: 'true',
       });
 
-      return response.data as GitHubTreeResponse;
+      return response.data;
     } catch (error) {
       this.handleOctokitError(error, endpoint);
     }
@@ -96,7 +96,7 @@ export class GitHubClient implements IGitHubClient {
         path,
       });
 
-      return response.data as GitHubContentResponse;
+      return response.data;
     } catch (error) {
       this.handleOctokitError(error, endpoint);
     }
