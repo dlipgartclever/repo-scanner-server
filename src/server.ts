@@ -1,6 +1,6 @@
 import { ApolloServer } from '@apollo/server';
 import { startStandaloneServer } from '@apollo/server/standalone';
-import { typeDefs, resolvers, GraphQLContext } from './schema/schema.js';
+import { typeDefs, resolvers, GraphQLContext } from './schema/repository/resolvers.js';
 import { createGitHubClient } from './clients/github.client.js';
 import { createRepositoryService } from './services/repository.service.js';
 import { logger } from './infrastructure/logger.js';

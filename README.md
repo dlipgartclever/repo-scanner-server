@@ -87,7 +87,7 @@ src/
 ├── index.ts                 # Entry point
 ├── server.ts                # Apollo Server setup
 ├── schema/
-│   └── schema.ts            # GraphQL type defs + resolvers
+│   └── resolvers.ts            # GraphQL type defs + resolvers
 ├── services/
 │   └── repository.service.ts # Business logic
 ├── clients/

@@ -1,3 +1,6 @@
+import {logger} from "../logger.js";
+import {GraphQLError} from "graphql/index.js";
+
 export const ErrorType = {
   AUTHENTICATION_ERROR: 'AUTHENTICATION_ERROR',
   RATE_LIMIT_ERROR: 'RATE_LIMIT_ERROR',
@@ -62,4 +65,53 @@ export function isOperationalError(error: unknown): boolean {
     return error.isOperational;
   }
   return false;
+}
+
+export function handleError(error: unknown, operation: string): never {
+    logger.error(`GraphQL resolver error: ${operation}`, error as Error, {
+        operation,
+    });
+
+    if (error instanceof AppError) {
+        const extensions: Record<string, unknown> = {
+            code: getErrorCode(error),
+            statusCode: error.statusCode,
+        };
+
+        if (error.context) {
+            extensions.details = error.context;
+        }
+
+        throw new GraphQLError(error.message, {
+            extensions,
+        });
+    }
+
+    if (!isOperationalError(error)) {
+        throw new GraphQLError('An unexpected error occurred', {
+            extensions: {
+                code: 'INTERNAL_SERVER_ERROR',
+                statusCode: 500,
+            },
+        });
+    }
+
+    throw error;
+}
+
+function getErrorCode(error: AppError): string {
+    switch (error.statusCode) {
+        case 400:
+            return 'BAD_REQUEST';
+        case 401:
+            return 'UNAUTHENTICATED';
+        case 403:
+            return 'FORBIDDEN';
+        case 404:
+            return 'NOT_FOUND';
+        case 429:
+            return 'RATE_LIMITED';
+        default:
+            return 'INTERNAL_SERVER_ERROR';
+    }
 }
