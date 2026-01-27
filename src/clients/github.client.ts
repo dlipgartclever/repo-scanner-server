@@ -9,7 +9,7 @@ import {AuthenticationError, GitHubApiError, NotFoundError,} from '../infrastruc
 import {logger} from '../infrastructure/logger.js';
 
 const GITHUB_API_BASE_URL = 'https://api.github.com';
-const REQUEST_TIMEOUT_MS = 30000;
+const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 30000;
 
 export class GitHubClient implements IGitHubClient {
   private readonly baseUrl: string;

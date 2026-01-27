@@ -11,7 +11,7 @@ import { logger } from '../infrastructure/logger.js';
 import { NotFoundError, ValidationError } from '../infrastructure/errors/index.js';
 
 const YAML_EXTENSIONS = ['.yaml', '.yml'];
-const MAX_CONCURRENT_REPO_SCANS = 2;
+const MAX_CONCURRENT_REPO_SCANS = Number(process.env.MAX_CONCURRENT_REPO_SCANS) || 2;
 
 export class RepositoryService implements IRepositoryService {
   private readonly githubClient: IGitHubClient;
