@@ -92,6 +92,5 @@ export interface IGitHubClient {
 
 export interface IRepositoryService {
   listRepositories(token: string): Promise<Repository[]>;
-  getRepositoryDetails(token: string, repoName: string): Promise<RepositoryDetails>;
+  getRepositoryDetails(token: string, owner: string, repoName: string): Promise<RepositoryDetails>;
 }
-

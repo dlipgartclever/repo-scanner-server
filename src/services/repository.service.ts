@@ -1,14 +1,7 @@
 import pLimit, { LimitFunction } from 'p-limit';
-import {
-  Repository,
-  RepositoryDetails,
-  Webhook,
-  IRepositoryService,
-  IGitHubClient,
-  GitHubTreeItem,
-} from '../types/index.js';
+import { Repository, RepositoryDetails, Webhook, IRepositoryService, IGitHubClient, GitHubTreeItem } from '../types/index.js';
 import { logger } from '../infrastructure/logger.js';
-import { NotFoundError, ValidationError } from '../infrastructure/errors/index.js';
+import { ValidationError } from '../infrastructure/errors/index.js';
 
 const YAML_EXTENSIONS = ['.yaml', '.yml'];
 const MAX_CONCURRENT_REPO_SCANS = Number(process.env.MAX_CONCURRENT_REPO_SCANS) || 2;
@@ -17,10 +10,7 @@ export class RepositoryService implements IRepositoryService {
   private readonly githubClient: IGitHubClient;
   private readonly limit: LimitFunction;
 
-  constructor(
-    githubClient: IGitHubClient,
-    limit?: LimitFunction
-  ) {
+  constructor(githubClient: IGitHubClient, limit?: LimitFunction) {
     this.githubClient = githubClient;
     this.limit = limit || pLimit(MAX_CONCURRENT_REPO_SCANS);
   }
@@ -63,8 +53,9 @@ export class RepositoryService implements IRepositoryService {
     }
   }
 
-  async getRepositoryDetails(token: string, repoName: string): Promise<RepositoryDetails> {
+  async getRepositoryDetails(token: string, owner: string, repoName: string): Promise<RepositoryDetails> {
     this.validateToken(token);
+    this.validateOwner(owner);
     this.validateRepoName(repoName);
 
     const correlationId = this.generateCorrelationId();
@@ -77,11 +68,7 @@ export class RepositoryService implements IRepositoryService {
     });
 
     try {
-      const owner = await this.resolveOwner(token, repoName);
-
-      const repoDetails = await this.limit(() =>
-        this.fetchRepositoryDetails(token, owner, repoName, correlationId)
-      );
+      const repoDetails = await this.limit(() => this.fetchRepositoryDetails(token, owner, repoName, correlationId));
 
       logger.info('Successfully fetched repository details', {
         correlationId,
@@ -102,42 +89,17 @@ export class RepositoryService implements IRepositoryService {
     }
   }
 
-  private async fetchRepositoryDetails(
-    token: string,
-    owner: string,
-    repoName: string,
-    correlationId: string
-  ): Promise<RepositoryDetails> {
+  private async fetchRepositoryDetails(token: string, owner: string, repoName: string, correlationId: string): Promise<RepositoryDetails> {
     const repoInfoResult = await this.githubClient.getRepository(token, owner, repoName);
 
-    let treeResult;
-    try {
-      treeResult = await this.githubClient.getRepositoryTree(
-        token,
-        owner,
-        repoName,
-        repoInfoResult.default_branch
-      );
-    } catch {
-      try {
-        treeResult = await this.githubClient.getRepositoryTree(token, owner, repoName, 'master');
-      } catch {
-        treeResult = { tree: [], truncated: false, sha: '', url: '' };
-      }
-    }
+    const treeResult = await this.githubClient.getRepositoryTree(token, owner, repoName, repoInfoResult.default_branch);
 
     const webhooksResult = await this.githubClient.listWebhooks(token, owner, repoName);
 
     const files = treeResult.tree.filter((item) => item.type === 'blob');
     const numberOfFiles = files.length;
 
-    const yamlContent = await this.getFirstYamlFileContent(
-      token,
-      owner,
-      repoName,
-      files,
-      correlationId
-    );
+    const yamlContent = await this.getFirstYamlFileContent(token, owner, repoName, files, correlationId);
 
     const activeWebhooks: Webhook[] = webhooksResult
       .filter((hook) => hook.active)
@@ -165,11 +127,9 @@ export class RepositoryService implements IRepositoryService {
     owner: string,
     repoName: string,
     files: GitHubTreeItem[],
-    correlationId: string
+    correlationId: string,
   ): Promise<string | null> {
-    const yamlFile = files.find((file) =>
-      YAML_EXTENSIONS.some((ext) => file.path.toLowerCase().endsWith(ext))
-    );
+    const yamlFile = files.find((file) => YAML_EXTENSIONS.some((ext) => file.path.toLowerCase().endsWith(ext)));
 
     if (!yamlFile) {
       logger.debug('No YAML file found in repository', {
@@ -180,12 +140,7 @@ export class RepositoryService implements IRepositoryService {
     }
 
     try {
-      const content = await this.githubClient.getFileContent(
-        token,
-        owner,
-        repoName,
-        yamlFile.path
-      );
+      const content = await this.githubClient.getFileContent(token, owner, repoName, yamlFile.path);
 
       const decodedContent = Buffer.from(content.content, 'base64').toString('utf-8');
 
@@ -207,20 +162,15 @@ export class RepositoryService implements IRepositoryService {
     }
   }
 
-  private async resolveOwner(token: string, repoName: string): Promise<string> {
-    const repos = await this.githubClient.listUserRepositories(token);
-    const repo = repos.find((r) => r.name.toLowerCase() === repoName.toLowerCase());
-
-    if (!repo) {
-      throw new NotFoundError('Repository', repoName);
-    }
-
-    return repo.owner.login;
-  }
-
   private validateToken(token: string): void {
     if (!token || typeof token !== 'string' || token.trim().length === 0) {
       throw new ValidationError('GitHub token is required', 'token');
+    }
+  }
+
+  private validateOwner(owner: string): void {
+    if (!owner || typeof owner !== 'string' || owner.trim().length === 0) {
+      throw new ValidationError('Owner is required', 'owner');
     }
   }
 
@@ -231,10 +181,7 @@ export class RepositoryService implements IRepositoryService {
 
     const validRepoNamePattern = /^[a-zA-Z0-9._-]+$/;
     if (!validRepoNamePattern.test(repoName)) {
-      throw new ValidationError(
-        'Invalid repository name format',
-        'repoName'
-      );
+      throw new ValidationError('Invalid repository name format', 'repoName');
     }
   }
 
@@ -243,9 +190,6 @@ export class RepositoryService implements IRepositoryService {
   }
 }
 
-export const createRepositoryService = (
-  githubClient: IGitHubClient,
-  limit?: LimitFunction
-): RepositoryService => {
+export const createRepositoryService = (githubClient: IGitHubClient, limit?: LimitFunction): RepositoryService => {
   return new RepositoryService(githubClient, limit);
 };

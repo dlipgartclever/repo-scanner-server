@@ -1,8 +1,8 @@
-import {IRepositoryService} from '../../types/index.js';
-import {handleError} from '../../infrastructure/errors/index.js';
-import {typeDefs} from './typeDefs.js';
+import { IRepositoryService } from '../../types/index.js';
+import { handleError } from '../../infrastructure/errors/index.js';
+import { typeDefs } from './typeDefs.js';
 
-export {typeDefs};
+export { typeDefs };
 
 export interface GraphQLContext {
   repositoryService: IRepositoryService;
@@ -14,16 +14,13 @@ interface RepositoriesArgs {
 
 interface RepositoryDetailsArgs {
   token: string;
+  owner: string;
   repoName: string;
 }
 
 export const resolvers = {
   Query: {
-    repositories: async (
-      _parent: unknown,
-      {token}: RepositoriesArgs,
-      context: GraphQLContext
-    ) => {
+    repositories: async (_parent: unknown, { token }: RepositoriesArgs, context: GraphQLContext) => {
       try {
         return await context.repositoryService.listRepositories(token);
       } catch (error) {
@@ -31,16 +28,9 @@ export const resolvers = {
       }
     },
 
-    repositoryDetails: async (
-      _parent: unknown,
-      args: RepositoryDetailsArgs,
-      context: GraphQLContext
-    ) => {
+    repositoryDetails: async (_parent: unknown, args: RepositoryDetailsArgs, context: GraphQLContext) => {
       try {
-        return await context.repositoryService.getRepositoryDetails(
-          args.token,
-          args.repoName
-        );
+        return await context.repositoryService.getRepositoryDetails(args.token, args.owner, args.repoName);
       } catch (error) {
         handleError(error, 'repositoryDetails');
       }

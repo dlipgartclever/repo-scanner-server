@@ -1,173 +1,122 @@
-import {
-    GitHubContentResponse,
-    GitHubRepositoryResponse,
-    GitHubTreeResponse,
-    GitHubWebhookResponse,
-    IGitHubClient,
-} from '../types/index.js';
-import {AuthenticationError, GitHubApiError, NotFoundError,} from '../infrastructure/errors/index.js';
-import {logger} from '../infrastructure/logger.js';
+import { Octokit } from '@octokit/rest';
+import { GitHubContentResponse, GitHubRepositoryResponse, GitHubTreeResponse, GitHubWebhookResponse, IGitHubClient } from '../types/index.js';
+import { AuthenticationError, GitHubApiError, NotFoundError } from '../infrastructure/errors/index.js';
 
-const GITHUB_API_BASE_URL = 'https://api.github.com';
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 30000;
 
 export class GitHubClient implements IGitHubClient {
-  private readonly baseUrl: string;
-
-  constructor(
-    baseUrl: string = GITHUB_API_BASE_URL,
-  ) {
-    this.baseUrl = baseUrl;
+  private createOctokit(token: string, baseUrl?: string): Octokit {
+    return new Octokit({
+      auth: token,
+      baseUrl,
+      request: {
+        timeout: REQUEST_TIMEOUT_MS,
+      },
+      userAgent: 'GitHub-Scanner-Service',
+    });
   }
 
-  private createHeaders(token: string): Record<string, string> {
-    return {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'GitHub-Scanner-Service',
-    };
-  }
-
-  private async fetchWithTimeout(
-    url: string,
-    options: RequestInit,
-    timeoutMs: number = REQUEST_TIMEOUT_MS
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-        return await fetch(url, {
-          ...options,
-          signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  }
-
-  private async request<T>(
-    token: string,
-    endpoint: string,
-    method: string = 'GET',
-    correlationId?: string
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const startTime = Date.now();
-
-    logger.debug('GitHub API request started', {
-      correlationId,
-      operation: 'github_api_request',
-      endpoint,
-      method,
-    });
-
-    const response = await this.fetchWithTimeout(url, {
-      method,
-      headers: this.createHeaders(token),
-    });
-
-    const duration = Date.now() - startTime;
-
-    logger.debug('GitHub API response received', {
-      correlationId,
-      operation: 'github_api_response',
-      endpoint,
-      statusCode: response.status,
-      duration,
-    });
-
-    if (response.status === 401) {
+  private handleOctokitError(error: unknown, endpoint: string): never {
+    const err = error as { status?: number; message?: string };
+    if (err.status === 401) {
       throw new AuthenticationError();
     }
 
-    if (response.status === 404) {
+    if (err.status === 404) {
       throw new NotFoundError('GitHub resource', endpoint);
     }
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new GitHubApiError(
-        `GitHub API error: ${errorBody}`,
-        response.status,
-        endpoint
-      );
-    }
-
-    return response.json() as Promise<T>;
+    throw new GitHubApiError(err.message || 'GitHub API error', err.status || 500, endpoint);
   }
 
   async listUserRepositories(token: string): Promise<GitHubRepositoryResponse[]> {
-      return await this.request<GitHubRepositoryResponse[]>(
-          token,
-          '/user/repos?per_page=100&sort=updated'
-      );
+    const endpoint = '/user/repos';
+
+    try {
+      const octokit = this.createOctokit(token);
+      const response = await octokit.repos.listForAuthenticatedUser({
+        per_page: 100,
+        sort: 'updated',
+      });
+
+      return response.data as GitHubRepositoryResponse[];
+    } catch (error) {
+      this.handleOctokitError(error, endpoint);
+    }
   }
 
-  async getRepository(
-    token: string,
-    owner: string,
-    repo: string
-  ): Promise<GitHubRepositoryResponse> {
-      return this.request<GitHubRepositoryResponse>(
-        token,
-        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
-      );
+  async getRepository(token: string, owner: string, repo: string): Promise<GitHubRepositoryResponse> {
+    const endpoint = `/repos/${owner}/${repo}`;
+
+    try {
+      const octokit = this.createOctokit(token);
+      const response = await octokit.repos.get({
+        owner,
+        repo,
+      });
+
+      return response.data as GitHubRepositoryResponse;
+    } catch (error) {
+      this.handleOctokitError(error, endpoint);
+    }
   }
 
-  async getRepositoryTree(
-    token: string,
-    owner: string,
-    repo: string,
-    branch: string
-  ): Promise<GitHubTreeResponse> {
-      return this.request<GitHubTreeResponse>(
-        token,
-        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`
-      );
+  async getRepositoryTree(token: string, owner: string, repo: string, branch: string): Promise<GitHubTreeResponse> {
+    const endpoint = `/repos/${owner}/${repo}/git/trees/${branch}`;
+
+    try {
+      const octokit = this.createOctokit(token);
+      const response = await octokit.git.getTree({
+        owner,
+        repo,
+        tree_sha: branch,
+        recursive: 'true',
+      });
+
+      return response.data as GitHubTreeResponse;
+    } catch (error) {
+      this.handleOctokitError(error, endpoint);
+    }
   }
 
-  async getFileContent(
-    token: string,
-    owner: string,
-    repo: string,
-    path: string
-  ): Promise<GitHubContentResponse> {
-      return this.request<GitHubContentResponse>(
-        token,
-        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}`
-      );
+  async getFileContent(token: string, owner: string, repo: string, path: string): Promise<GitHubContentResponse> {
+    const endpoint = `/repos/${owner}/${repo}/contents/${path}`;
+
+    try {
+      const octokit = this.createOctokit(token);
+      const response = await octokit.repos.getContent({
+        owner,
+        repo,
+        path,
+      });
+
+      return response.data as GitHubContentResponse;
+    } catch (error) {
+      this.handleOctokitError(error, endpoint);
+    }
   }
 
-  async listWebhooks(
-    token: string,
-    owner: string,
-    repo: string
-  ): Promise<GitHubWebhookResponse[]> {
-      try {
-        return await this.request<GitHubWebhookResponse[]>(
-          token,
-          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/hooks`
-        );
-      } catch (error) {
-        if (error instanceof NotFoundError) {
-          return [];
-        }
-        if (error instanceof GitHubApiError && error.statusCode === 403) {
-          logger.warn('Insufficient permissions to list webhooks', {
-            owner,
-            repository: repo,
-          });
-          return [];
-        }
-        throw error;
+  async listWebhooks(token: string, owner: string, repo: string): Promise<GitHubWebhookResponse[]> {
+    const endpoint = `/repos/${owner}/${repo}/hooks`;
+
+    try {
+      const octokit = this.createOctokit(token);
+      const response = await octokit.repos.listWebhooks({
+        owner,
+        repo,
+      });
+
+      return response.data as GitHubWebhookResponse[];
+    } catch (error: unknown) {
+      const err = error as { status?: number };
+      if (err.status === 404) {
+        return [];
       }
+      this.handleOctokitError(error, endpoint);
+    }
   }
 }
 
-export const createGitHubClient = (
-  baseUrl?: string,
-): GitHubClient => {
-  return new GitHubClient(baseUrl);
+export const createGitHubClient = (): GitHubClient => {
+  return new GitHubClient();
 };

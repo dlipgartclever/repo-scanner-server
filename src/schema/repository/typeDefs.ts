@@ -20,11 +20,11 @@ export const typeDefs = `#graphql
     isPrivate: Boolean!
     numberOfFiles: Int!
     contentOfOneYamlFile: String
-    activeWebhooks: [Webhook!]!
+    activeWebhooks: [Webhook!]! 
   }
 
   type Query {
     repositories(token: String!): [Repository!]!
-    repositoryDetails(token: String!, repoName: String!): RepositoryDetails!
+    repositoryDetails(token: String!, owner: String!, repoName: String!): RepositoryDetails!
   }
 `;
