@@ -1,6 +1,5 @@
 import {
     GitHubContentResponse,
-    GitHubRateLimitInfo,
     GitHubRepositoryResponse,
     GitHubTreeResponse,
     GitHubWebhookResponse,
@@ -164,16 +163,6 @@ export class GitHubClient implements IGitHubClient {
         }
         throw error;
       }
-  }
-
-  async getRateLimit(token: string): Promise<GitHubRateLimitInfo> {
-    const response = await this.request<{
-      resources: {
-        core: GitHubRateLimitInfo;
-      };
-    }>(token, '/rate_limit');
-
-    return response.resources.core;
   }
 }
 

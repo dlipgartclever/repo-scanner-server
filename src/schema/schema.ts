@@ -116,9 +116,12 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       try {
-        //get repo details
+        return await context.repositoryService.getRepositoryDetails(
+          args.token,
+          args.repoName
+        );
       } catch (error) {
-        //handle error
+        handleError(error, 'repositoryDetails');
       }
     },
   },

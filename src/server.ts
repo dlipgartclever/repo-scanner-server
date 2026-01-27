@@ -3,7 +3,6 @@ import { startStandaloneServer } from '@apollo/server/standalone';
 import { typeDefs, resolvers, GraphQLContext } from './schema/schema.js';
 import { createGitHubClient } from './clients/github.client.js';
 import { createRepositoryService } from './services/repository.service.js';
-import { createConcurrencyLimiter } from './infrastructure/concurrency-limiter.js';
 import { logger } from './infrastructure/logger.js';
 import { IRepositoryService } from './types/index.js';
 
@@ -13,7 +12,6 @@ export interface ServerConfig {
 }
 
 const DEFAULT_PORT = 4000;
-const MAX_CONCURRENT_REPO_SCANS = 2;
 
 export async function createApolloServer(): Promise<ApolloServer<GraphQLContext>> {
   const server = new ApolloServer<GraphQLContext>({
@@ -46,8 +44,7 @@ export async function createApolloServer(): Promise<ApolloServer<GraphQLContext>
 
 export function createDefaultRepositoryService(): IRepositoryService {
   const githubClient = createGitHubClient();
-  const concurrencyLimiter = createConcurrencyLimiter(MAX_CONCURRENT_REPO_SCANS);
-  return createRepositoryService(githubClient, concurrencyLimiter);
+  return createRepositoryService(githubClient);
 }
 
 export async function startServer(config?: Partial<ServerConfig>): Promise<{
