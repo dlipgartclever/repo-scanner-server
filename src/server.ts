@@ -5,6 +5,8 @@ import { createGitHubClient } from './clients/github.client.js';
 import { createRepositoryService } from './services/repository.service.js';
 import { logger } from './infrastructure/logger.js';
 import { IRepositoryService } from './types/index.js';
+import { errorLoggingPlugin } from './infrastructure/plugins/errorLoggingPlugin.js';
+import { formatGraphQLError } from './infrastructure/utils/formatGraphQLError.js';
 
 export interface ServerConfig {
   port: number;
@@ -18,25 +20,9 @@ export async function createApolloServer(): Promise<ApolloServer<GraphQLContext>
     typeDefs,
     resolvers,
     introspection: true,
-    formatError: (formattedError, error) => {
-      logger.error('GraphQL Error', error as Error, {
-        message: formattedError.message,
-        code: formattedError.extensions?.code as string,
-        path: formattedError.path?.join('.'),
-      });
-
-      if (process.env.NODE_ENV === 'production') {
-        return {
-          message: formattedError.message,
-          extensions: {
-            code: formattedError.extensions?.code,
-            statusCode: formattedError.extensions?.statusCode,
-          },
-        };
-      }
-
-      return formattedError;
-    },
+    plugins: [errorLoggingPlugin],
+    formatError: formatGraphQLError,
+    includeStacktraceInErrorResponses: process.env.NODE_ENV === 'development',
   });
 
   return server;

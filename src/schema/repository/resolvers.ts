@@ -1,5 +1,4 @@
 import { IRepositoryService, RepositoryDetailsParent } from '../../types/index.js';
-import { handleError } from '../../infrastructure/errors/index.js';
 import { typeDefs } from './typeDefs.js';
 
 export { typeDefs };
@@ -21,45 +20,25 @@ interface RepositoryDetailsArgs {
 export const resolvers = {
   Query: {
     repositories: async (_parent: unknown, { token }: RepositoriesArgs, context: GraphQLContext) => {
-      try {
-        return await context.repositoryService.listRepositories(token);
-      } catch (error) {
-        handleError(error, 'repositories');
-      }
+      return await context.repositoryService.listRepositories(token);
     },
 
     repositoryDetails: async (_parent: unknown, args: RepositoryDetailsArgs, context: GraphQLContext) => {
-      try {
-        return await context.repositoryService.getRepositoryDetails(args.token, args.owner, args.repoName);
-      } catch (error) {
-        handleError(error, 'repositoryDetails');
-      }
+      return await context.repositoryService.getRepositoryDetails(args.token, args.owner, args.repoName);
     },
   },
 
   RepositoryDetails: {
     activeWebhooks: async (parent: RepositoryDetailsParent, _args: unknown, context: GraphQLContext) => {
-      try {
-        return await context.repositoryService.getActiveWebhooks(parent.token, parent.owner, parent.repoName);
-      } catch (error) {
-        handleError(error, 'activeWebhooks');
-      }
+      return await context.repositoryService.getActiveWebhooks(parent.token, parent.owner, parent.repoName);
     },
 
     numberOfFiles: async (parent: RepositoryDetailsParent, _args: unknown, context: GraphQLContext) => {
-      try {
-        return await context.repositoryService.getNumberOfFiles(parent.token, parent.owner, parent.repoName, parent.defaultBranch);
-      } catch (error) {
-        handleError(error, 'numberOfFiles');
-      }
+      return await context.repositoryService.getNumberOfFiles(parent.token, parent.owner, parent.repoName, parent.defaultBranch);
     },
 
     contentOfOneYamlFile: async (parent: RepositoryDetailsParent, _args: unknown, context: GraphQLContext) => {
-      try {
-        return await context.repositoryService.getYamlFileContent(parent.token, parent.owner, parent.repoName, parent.defaultBranch);
-      } catch (error) {
-        handleError(error, 'contentOfOneYamlFile');
-      }
+      return await context.repositoryService.getYamlFileContent(parent.token, parent.owner, parent.repoName, parent.defaultBranch);
     },
   },
 };
