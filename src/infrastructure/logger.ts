@@ -19,6 +19,19 @@ const sanitizeContext = (context?: LogContext): LogContext | undefined => {
   return sanitized;
 };
 
+const { combine, timestamp, printf, errors, colorize, json } = winston.format;
+
+const consoleFormat = combine(
+  colorize(),
+  timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  errors({ stack: true }),
+  printf(({ timestamp, level, message, stack }) => {
+    return `${timestamp} [${level}]: ${stack || message}`;
+  }),
+);
+
+const fileFormat = combine(timestamp(), errors({ stack: true }), json());
+
 const createWinstonLogger = (serviceName: string, level: string): winston.Logger => {
   return winston.createLogger({
     level,
@@ -26,7 +39,18 @@ const createWinstonLogger = (serviceName: string, level: string): winston.Logger
     format: winston.format.combine(winston.format.timestamp(), winston.format.errors({ stack: true }), winston.format.json()),
     transports: [
       new winston.transports.Console({
-        format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+        level: 'debug',
+        format: consoleFormat,
+      }),
+      new winston.transports.File({
+        filename: 'logs/app.log',
+        level: 'info',
+        format: fileFormat,
+      }),
+      new winston.transports.File({
+        filename: 'logs/error.log',
+        level: 'error',
+        format: fileFormat,
       }),
     ],
   });
