@@ -1,5 +1,6 @@
 import { ApolloServerPlugin, GraphQLRequestListener } from '@apollo/server';
 import { GraphQLContext } from '../../schema/repository/resolvers.js';
+import { logger } from '../logger.js';
 import { repositorySemaphore } from '../utils/scan-semaphore.js';
 
 const TRACKED_FIELDS = new Set(['activeWebhooks', 'numberOfFiles', 'contentOfOneYamlFile']);
@@ -7,6 +8,7 @@ const TRACKED_FIELDS = new Set(['activeWebhooks', 'numberOfFiles', 'contentOfOne
 interface RepoTracking {
   release: () => void;
   pendingFields: number;
+  sessionId: string;
 }
 
 export const scanConcurrencyPlugin: ApolloServerPlugin<GraphQLContext> = {
@@ -24,8 +26,14 @@ export const scanConcurrencyPlugin: ApolloServerPlugin<GraphQLContext> = {
           );
 
           if (hasRepoDetails) {
+            const sessionId = `scan_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+            logger.info('🔵 QUEUED - Waiting for semaphore slot', { sessionId });
+
             await repositorySemaphore.acquire();
             semaphoreAcquired = true;
+
+            logger.info('🟢 ACQUIRED - Semaphore slot acquired', { sessionId });
           }
         }
       },
@@ -36,33 +44,55 @@ export const scanConcurrencyPlugin: ApolloServerPlugin<GraphQLContext> = {
             const key = source?.owner && source?.repoName ? `${source.owner}_${source.repoName}` : null;
 
             if (info.parentType.name === 'RepositoryDetails' && key && TRACKED_FIELDS.has(info.fieldName)) {
-              let repoTrack = tracking.get(key);
+              let t = tracking.get(key);
 
-              if (!repoTrack) {
-                repoTrack = {
+              if (!t) {
+                const sessionId = `scan_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                t = {
                   release: () => {
                     if (semaphoreAcquired) {
                       repositorySemaphore.release();
                       semaphoreAcquired = false;
+                      logger.info('🔴 RELEASED - Semaphore slot released', { sessionId });
                     }
                   },
                   pendingFields: 0,
+                  sessionId,
                 };
-                tracking.set(key, repoTrack);
+                tracking.set(key, t);
               }
 
-              repoTrack.pendingFields++;
-              return () => {
-                const repoTrack = tracking.get(key);
-                if (repoTrack) {
-                  repoTrack.pendingFields--;
-                  if (repoTrack.pendingFields === 0) {
-                    repoTrack.release();
+              t.pendingFields++;
+              logger.info('📡 Field resolver started', {
+                sessionId: t.sessionId,
+                field: info.fieldName,
+                pendingFields: t.pendingFields,
+              });
+
+              // Return afterResolve callback
+              return (_error: unknown) => {
+                const t = tracking.get(key);
+                if (t) {
+                  t.pendingFields--;
+
+                  logger.info('✅ Field resolver completed', {
+                    sessionId: t.sessionId,
+                    field: info.fieldName,
+                    pendingFields: t.pendingFields,
+                    hadError: !!_error,
+                  });
+
+                  if (t.pendingFields === 0) {
+                    logger.info('🏁 All fields complete, releasing semaphore', {
+                      sessionId: t.sessionId,
+                    });
+                    t.release();
                     tracking.delete(key);
                   }
                 }
               };
             }
+
             return undefined;
           },
         };
@@ -70,6 +100,7 @@ export const scanConcurrencyPlugin: ApolloServerPlugin<GraphQLContext> = {
 
       async willSendResponse() {
         if (semaphoreAcquired) {
+          logger.warn('⚠️ Safety net: Releasing unreleased semaphore');
           repositorySemaphore.release();
           semaphoreAcquired = false;
         }
