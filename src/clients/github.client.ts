@@ -36,8 +36,6 @@ export class GitHubClient implements IGitHubClient {
   }
 
   async listUserRepositories(token: string): Promise<GitHubRepositoryResponse[]> {
-    const endpoint = '/user/repos';
-
     try {
       const octokit = this.createOctokit(token);
       const response = await octokit.repos.listForAuthenticatedUser({
@@ -47,13 +45,11 @@ export class GitHubClient implements IGitHubClient {
 
       return response.data as GitHubRepositoryResponse[];
     } catch (error) {
-      this.handleOctokitError(error, endpoint);
+      this.handleOctokitError(error, 'repositories');
     }
   }
 
   async getRepository(token: string, owner: string, repo: string): Promise<GitHubRepositoryResponse> {
-    const endpoint = `/repos/${owner}/${repo}`;
-
     try {
       const octokit = this.createOctokit(token);
       const response = await octokit.repos.get({
@@ -63,13 +59,11 @@ export class GitHubClient implements IGitHubClient {
 
       return response.data as GitHubRepositoryResponse;
     } catch (error) {
-      this.handleOctokitError(error, endpoint);
+      this.handleOctokitError(error, 'details');
     }
   }
 
   async getRepositoryTree(token: string, owner: string, repo: string, branch: string): Promise<GitHubTreeResponse> {
-    const endpoint = `/repos/${owner}/${repo}/git/trees/${branch}`;
-
     try {
       const octokit = this.createOctokit(token);
       const response = await octokit.git.getTree({
@@ -81,13 +75,11 @@ export class GitHubClient implements IGitHubClient {
 
       return response.data;
     } catch (error) {
-      this.handleOctokitError(error, endpoint);
+      this.handleOctokitError(error, 'repository-tree');
     }
   }
 
   async getFileContent(token: string, owner: string, repo: string, path: string): Promise<GitHubContentResponse> {
-    const endpoint = `/repos/${owner}/${repo}/contents/${path}`;
-
     try {
       const octokit = this.createOctokit(token);
       const response = await octokit.repos.getContent({
@@ -98,13 +90,11 @@ export class GitHubClient implements IGitHubClient {
 
       return response.data;
     } catch (error) {
-      this.handleOctokitError(error, endpoint);
+      this.handleOctokitError(error, 'file-content');
     }
   }
 
   async listWebhooks(token: string, owner: string, repo: string): Promise<GitHubWebhookResponse[]> {
-    const endpoint = `/repos/${owner}/${repo}/hooks`;
-
     try {
       const octokit = this.createOctokit(token);
       const response = await octokit.repos.listWebhooks({
@@ -118,7 +108,7 @@ export class GitHubClient implements IGitHubClient {
       if (err.status === 404) {
         return [];
       }
-      this.handleOctokitError(error, endpoint);
+      this.handleOctokitError(error, 'webhooks');
     }
   }
 }
