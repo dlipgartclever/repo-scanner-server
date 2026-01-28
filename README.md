@@ -1,12 +1,11 @@
 # GitHub Repository Scanner
 
-A production-ready Apollo GraphQL server for scanning GitHub repositories.
+Apollo GraphQL server for scanning GitHub repositories.
 
 ## Features
 
 - **List Repositories**: Fetch all repositories accessible to the authenticated user
 - **Repository Details**: Get detailed information including file count, YAML content, and webhooks
-- **Rate Limit Handling**: Automatic retry with exponential backoff
 - **Concurrency Control**: Limits parallel repository scans to 2
 - **Structured Logging**: JSON logging with correlation IDs
 
@@ -49,7 +48,11 @@ query {
 
 ```graphql
 query {
-  repositoryDetails(token: "your-github-token", repoName: "GreenridgeApp1") {
+  repositoryDetails(
+    token: "your-github-token"
+    owner: "username"
+    repoName: "repo-name"
+  ) {
     name
     size
     owner
@@ -69,39 +72,19 @@ query {
 
 ## Environment Variables
 
-| Variable       | Default          | Description                              |
-| -------------- | ---------------- | ---------------------------------------- |
-| `PORT`         | `4000`           | Server port                              |
-| `NODE_ENV`     | `development`    | Environment                              |
-| `LOG_LEVEL`    | `INFO`           | Logging level (DEBUG, INFO, WARN, ERROR) |
-| `SERVICE_NAME` | `github-scanner` | Service name for logs                    |
+| Variable                  | Default          | Description                              |
+| ------------------------- | ---------------- | ---------------------------------------- |
+| `PORT`                    | `4000`           | Server port                              |
+| `NODE_ENV`                | `development`    | Environment (development/production)     |
+| `LOG_LEVEL`               | `info`           | Logging level (debug, info, warn, error) |
+| `SERVICE_NAME`            | `github-scanner` | Service name for logs                    |
+| `REQUEST_TIMEOUT_MS`      | `30000`          | Request timeout in milliseconds          |
+| `MAX_CONCURRENT_REPO_SCANS` | `2`            | Max parallel repository scans            |
 
 ## Testing
 
 ```bash
 npm test
-```
-
-## Architecture
-
-```
-src/
-├── index.ts                 # Entry point
-├── server.ts                # Apollo Server setup
-├── schema/
-│   └── resolvers.ts            # GraphQL type defs + resolvers
-├── services/
-│   └── repository.service.ts # Business logic
-├── clients/
-│   └── github.client.ts     # GitHub REST API client
-├── infrastructure/
-│   ├── logger.ts            # Structured JSON logger
-│   ├── concurrency-limiter.ts # Semaphore for parallel limits
-│   └── rate-limit-handler.ts  # Rate limit retry logic
-├── types/
-│   └── index.ts             # TypeScript interfaces
-└── errors/
-    └── index.ts             # Custom error classes
 ```
 
 ## Security Notes
