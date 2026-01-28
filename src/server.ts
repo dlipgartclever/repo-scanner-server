@@ -6,6 +6,7 @@ import { createRepositoryService } from './services/repository.service.js';
 import { logger } from './infrastructure/logger.js';
 import { IRepositoryService } from './types/index.js';
 import { errorLoggingPlugin } from './infrastructure/plugins/errorLoggingPlugin.js';
+import { scanConcurrencyPlugin } from './infrastructure/plugins/scanConcurrencyPlugin.js';
 import { formatGraphQLError } from './infrastructure/utils/formatGraphQLError.js';
 
 export interface ServerConfig {
@@ -20,7 +21,7 @@ export async function createApolloServer(): Promise<ApolloServer<GraphQLContext>
     typeDefs,
     resolvers,
     introspection: true,
-    plugins: [errorLoggingPlugin],
+    plugins: [errorLoggingPlugin, scanConcurrencyPlugin],
     formatError: formatGraphQLError,
     includeStacktraceInErrorResponses: process.env.NODE_ENV === 'development',
   });

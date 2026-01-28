@@ -1,18 +1,14 @@
-import pLimit, { LimitFunction } from 'p-limit';
 import { Repository, RepositoryDetailsParent, Webhook, IRepositoryService, IGitHubClient, GitHubTree } from '../types/index.js';
 import { logger } from '../infrastructure/logger.js';
 import { ValidationError } from '../infrastructure/errors/index.js';
 
 const YAML_EXTENSIONS = ['.yaml', '.yml'];
-const MAX_CONCURRENT_REPO_SCANS = Number(process.env.MAX_CONCURRENT_REPO_SCANS) || 2;
 
 export class RepositoryService implements IRepositoryService {
   private readonly githubClient: IGitHubClient;
-  private readonly limit: LimitFunction;
 
-  constructor(githubClient: IGitHubClient, limit?: LimitFunction) {
+  constructor(githubClient: IGitHubClient) {
     this.githubClient = githubClient;
-    this.limit = limit || pLimit(MAX_CONCURRENT_REPO_SCANS);
   }
 
   async listRepositories(token: string): Promise<Repository[]> {
@@ -64,11 +60,10 @@ export class RepositoryService implements IRepositoryService {
     });
 
     try {
-      const repoDetails = await this.limit(() => this.fetchBasicRepositoryDetails(token, owner, repoName));
+      const repoDetails = await this.fetchBasicRepositoryDetails(token, owner, repoName);
 
-      logger.info('Successfully fetched repository details', {
+      logger.info('Repository details fetched', {
         correlationId,
-        operation: 'get_repository_details',
         repository: repoName,
       });
 
@@ -86,13 +81,19 @@ export class RepositoryService implements IRepositoryService {
   async getActiveWebhooks(token: string, owner: string, repoName: string): Promise<Webhook[]> {
     const correlationId = this.generateCorrelationId();
 
-    logger.info('Fetching active webhooks', {
+    logger.info('📡 SUB-REQUEST - Fetching active webhooks (NOT limited)', {
       correlationId,
       operation: 'get_active_webhooks',
       repository: repoName,
     });
 
     const webhooksResult = await this.githubClient.listWebhooks(token, owner, repoName);
+
+    logger.info('✅ SUB-REQUEST - Webhooks fetched', {
+      correlationId,
+      repository: repoName,
+      count: webhooksResult.length,
+    });
 
     return webhooksResult
       .filter((hook) => hook.active)
@@ -108,7 +109,7 @@ export class RepositoryService implements IRepositoryService {
   async getNumberOfFiles(token: string, owner: string, repoName: string, defaultBranch: string): Promise<number> {
     const correlationId = this.generateCorrelationId();
 
-    logger.info('Fetching number of files', {
+    logger.info('📡 SUB-REQUEST - Fetching number of files (NOT limited)', {
       correlationId,
       operation: 'get_number_of_files',
       repository: repoName,
@@ -117,13 +118,19 @@ export class RepositoryService implements IRepositoryService {
     const treeResult = await this.githubClient.getRepositoryTree(token, owner, repoName, defaultBranch);
     const files = treeResult.tree.filter((item) => item.type === 'blob');
 
+    logger.info('✅ SUB-REQUEST - File count completed', {
+      correlationId,
+      repository: repoName,
+      count: files.length,
+    });
+
     return files.length;
   }
 
   async getYamlFileContent(token: string, owner: string, repoName: string, defaultBranch: string): Promise<string | null> {
     const correlationId = this.generateCorrelationId();
 
-    logger.info('Fetching YAML file content', {
+    logger.info('📡 SUB-REQUEST - Fetching YAML file content (NOT limited)', {
       correlationId,
       operation: 'get_yaml_file_content',
       repository: repoName,
@@ -132,7 +139,15 @@ export class RepositoryService implements IRepositoryService {
     const treeResult = await this.githubClient.getRepositoryTree(token, owner, repoName, defaultBranch);
     const files = treeResult.tree.filter((item) => item.type === 'blob');
 
-    return this.getFirstYamlFileContent(token, owner, repoName, files, correlationId);
+    const result = await this.getFirstYamlFileContent(token, owner, repoName, files, correlationId);
+
+    logger.info('✅ SUB-REQUEST - YAML fetch completed', {
+      correlationId,
+      repository: repoName,
+      found: result !== null,
+    });
+
+    return result;
   }
 
   private async fetchBasicRepositoryDetails(token: string, owner: string, repoName: string): Promise<RepositoryDetailsParent> {
@@ -221,6 +236,6 @@ export class RepositoryService implements IRepositoryService {
   }
 }
 
-export const createRepositoryService = (githubClient: IGitHubClient, limit?: LimitFunction): RepositoryService => {
-  return new RepositoryService(githubClient, limit);
+export const createRepositoryService = (githubClient: IGitHubClient): RepositoryService => {
+  return new RepositoryService(githubClient);
 };
