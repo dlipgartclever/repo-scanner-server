@@ -39,7 +39,6 @@ const createWinstonLogger = (serviceName: string, level: string): winston.Logger
     format: winston.format.combine(winston.format.timestamp(), winston.format.errors({ stack: true }), winston.format.json()),
     transports: [
       new winston.transports.Console({
-        level: 'debug',
         format: consoleFormat,
       }),
       new winston.transports.File({

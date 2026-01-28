@@ -16,7 +16,7 @@ export class RepositoryService implements IRepositoryService {
 
     const correlationId = this.generateCorrelationId();
 
-    logger.info('Fetching user repositories', {
+    logger.debug('Fetching user repositories', {
       correlationId,
       operation: 'list_repositories',
     });
@@ -30,7 +30,7 @@ export class RepositoryService implements IRepositoryService {
         owner: repo.owner.login,
       }));
 
-      logger.info('Successfully fetched repositories', {
+      logger.debug('Successfully fetched repositories', {
         correlationId,
         operation: 'list_repositories',
         count: repositories.length,
@@ -53,7 +53,7 @@ export class RepositoryService implements IRepositoryService {
 
     const correlationId = this.generateCorrelationId();
 
-    logger.info('Fetching repository details', {
+    logger.debug('Fetching repository details', {
       correlationId,
       operation: 'get_repository_details',
       repository: repoName,
@@ -62,7 +62,7 @@ export class RepositoryService implements IRepositoryService {
     try {
       const repoDetails = await this.fetchBasicRepositoryDetails(token, owner, repoName);
 
-      logger.info('Repository details fetched', {
+      logger.debug('Repository details fetched', {
         correlationId,
         repository: repoName,
       });
@@ -81,15 +81,9 @@ export class RepositoryService implements IRepositoryService {
   async getActiveWebhooks(token: string, owner: string, repoName: string): Promise<Webhook[]> {
     const correlationId = this.generateCorrelationId();
 
-    logger.info('📡 SUB-REQUEST - Fetching active webhooks (NOT limited)', {
-      correlationId,
-      operation: 'get_active_webhooks',
-      repository: repoName,
-    });
-
     const webhooksResult = await this.githubClient.listWebhooks(token, owner, repoName);
 
-    logger.info('✅ SUB-REQUEST - Webhooks fetched', {
+    logger.debug('Webhooks fetched', {
       correlationId,
       repository: repoName,
       count: webhooksResult.length,
@@ -109,7 +103,7 @@ export class RepositoryService implements IRepositoryService {
   async getNumberOfFiles(token: string, owner: string, repoName: string, defaultBranch: string): Promise<number> {
     const correlationId = this.generateCorrelationId();
 
-    logger.info('📡 SUB-REQUEST - Fetching number of files (NOT limited)', {
+    logger.debug('Fetching number of files (NOT limited)', {
       correlationId,
       operation: 'get_number_of_files',
       repository: repoName,
@@ -118,7 +112,7 @@ export class RepositoryService implements IRepositoryService {
     const treeResult = await this.githubClient.getRepositoryTree(token, owner, repoName, defaultBranch);
     const files = treeResult.tree.filter((item) => item.type === 'blob');
 
-    logger.info('✅ SUB-REQUEST - File count completed', {
+    logger.debug('File count completed', {
       correlationId,
       repository: repoName,
       count: files.length,
@@ -130,7 +124,7 @@ export class RepositoryService implements IRepositoryService {
   async getYamlFileContent(token: string, owner: string, repoName: string, defaultBranch: string): Promise<string | null> {
     const correlationId = this.generateCorrelationId();
 
-    logger.info('📡 SUB-REQUEST - Fetching YAML file content (NOT limited)', {
+    logger.debug('Fetching YAML file content', {
       correlationId,
       operation: 'get_yaml_file_content',
       repository: repoName,
@@ -141,7 +135,7 @@ export class RepositoryService implements IRepositoryService {
 
     const result = await this.getFirstYamlFileContent(token, owner, repoName, files, correlationId);
 
-    logger.info('✅ SUB-REQUEST - YAML fetch completed', {
+    logger.debug('YAML fetch completed', {
       correlationId,
       repository: repoName,
       found: result !== null,
@@ -174,7 +168,7 @@ export class RepositoryService implements IRepositoryService {
     const yamlFile = files.find((file) => YAML_EXTENSIONS.some((ext) => file.path.toLowerCase().endsWith(ext)));
 
     if (!yamlFile) {
-      logger.info('No YAML file found in repository', {
+      logger.debug('No YAML file found in repository', {
         correlationId,
         repository: repoName,
       });
@@ -190,7 +184,7 @@ export class RepositoryService implements IRepositoryService {
 
       const decodedContent = Buffer.from(content.content, 'base64').toString('utf-8');
 
-      logger.info('Successfully fetched YAML file content', {
+      logger.debug('Successfully fetched YAML file content', {
         correlationId,
         repository: repoName,
         filePath: yamlFile.path,
