@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import pLimit from 'p-limit';
 import { RepositoryService } from '../services/repository.service.js';
 import {
   IGitHubClient,
@@ -109,8 +108,7 @@ describe('RepositoryService', () => {
 
   beforeEach(() => {
     mockClient = createMockGitHubClient();
-    const limit = pLimit(2);
-    service = new RepositoryService(mockClient, limit);
+    service = new RepositoryService(mockClient);
   });
 
   describe('listRepositories', () => {
